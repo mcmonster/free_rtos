@@ -1,0 +1,9 @@
+free_rtos_env = Environment()
+free_rtos_env.Append(CPPPATH = ['#'])
+free_rtos_env.Append(CPPFLAGS = [
+    "-DFREE_RTOS_PORT=GCC_POSIX",
+])
+
+Export('free_rtos_env')
+
+SConscript('../SConscript')
