@@ -32,59 +32,81 @@ list.c
 queue.c
 tasks.c
 timers.c
+portable/MemMang/heap_4.c
 """)
 
 ###################################################################################################
 # Nothing below this should need to be edited!
 ###################################################################################################
-env = Environment()
 
-# Try to import the build environment
-try:
-    Import('free_rtos_env')
-    env = free_rtos_env.Clone()
+###################################################################################################
+# GCC ARM CM4F Build
+###################################################################################################
+def build_GCC_ARM_CM4F():
+    env = Environment()
 
-except:
-    raise Exception(
-            "Error: Expected you to export a SCons build environment called 'free_rtos_env'!"
-        )
+    try:
+        Import('free_rtos_arm_cm4f_env')
+        env = free_rtos_arm_cm4f_env.Clone()
 
-# Configure the build directory
-build_dir = '#.build/%s/' % target_name
-VariantDir(build_dir, '.')
+    except:
+        print "Skipping ARM CM4F build because 'free_rtos_arm_cm4f_env' environment " + \
+              "was not exported!"
+        return
 
-# Add the build settings
-env.Append(CPPPATH = includes)
+    # Configure the build directory
+    build_dir = '#.build/%s/arm_cm4f/' % target_name
+    VariantDir(build_dir, '.')
 
-# Add the port specific code
-build_flags = env._dict['CPPFLAGS']
-if '-DFREE_RTOS_PORT=GCC_ARM_CM4F' in build_flags:
-    sources.extend([
-        'portable/GCC/ARM_CM4F/port.c',
-        'portable/MemMang/heap_4.c'
-    ])
+    # Add the build settings
+    env.Append(CPPPATH = includes)
     env.Append(CPPPATH = ['%s/portable/GCC/ARM_CM4F' % Dir('.').abspath])
 
-elif '-DFREE_RTOS_PORT=GCC_POSIX' in build_flags:
-    sources.extend([
-        'portable/GCC/Posix/port.c',
-        'portable/MemMang/heap_4.c'
-    ])
+    # Update the build settings
+    my_sources = []
+    my_sources.extend(sources)
+    my_sources.extend(['portable/GCC/ARM_CM4F/port.c'])
+    
+    # Build the library
+    target = env.Library(
+            target = '#lib/%s_arm_cm4f' % target_name,
+            source = build_helper.decorateSource(my_sources, build_dir)
+        )
+    env.Alias('%s_arm_cm4f' % target_name, target)
+
+###################################################################################################
+# GCC Posix Build
+###################################################################################################
+def build_GCC_POSIX():
+    env = Environment()
+
+    try:
+        Import('free_rtos_posix_env')
+        env = free_rtos_posix_env.Clone()
+
+    except:
+        print "Skipping POSIX build because 'free_rtos_posix_env' environment was not exported!"
+        return    
+
+    # Configure the build directory
+    build_dir = '#.build/%s/posix/' % target_name
+    VariantDir(build_dir, '.')
+
+    # Add the build settings
+    env.Append(CPPPATH = includes)
     env.Append(CPPPATH = ['%s/portable/GCC/Posix' % Dir('.').abspath])
 
-else:
-    raise Exception("Error: Please add a valid -DFREE_RTOS_PORT= flag to build settings!")
+    # Update the build settings
+    my_sources = []
+    my_sources.extend(sources)
+    my_sources.extend(['portable/GCC/Posix/port.c'])
 
-# Add the build prefix to the source files
-my_source = build_helper.decorateSource(sources, build_dir)
-
-# Build the library
-try:
-    target = env.Library(target = "#lib/%s" % target_name, source = sources)
-    env.Alias(target_name, target)
-
-except:
-    raise Exception("Error: This library failed to build! Possible causes:\n" + 
-            "1. Did you remember to add an inclusion path that contains your FreeRTOSConfig.h?\n" + 
-            "2. Did you define which port you want included using the -DFREE_RTOS_PORT= flag?"
+    # Build the library
+    target = env.Library(
+            target = '#lib/%s_posix' % target_name,
+            source = build_helper.decorateSource(my_sources, build_dir)
         )
+    env.Alias('%s_posix' % target_name, target)
+
+build_GCC_ARM_CM4F()
+build_GCC_POSIX()
